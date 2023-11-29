@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const POSITION_NUMBER = 4;
 const POSITION_SIZE = 128;
@@ -11,35 +11,60 @@ const BOARD_DIMENSIONS =
 
 type Board = number[][];
 
-type MoveDirection = "up" | "down" | "left" | "right";
+type MoveDirection = 'up' | 'down' | 'left' | 'right';
 
 const PIECE_INFO: Record<
   number,
   { color: string; bgColor: string; fontSize: number }
 > = {
-  0: { color: "#ccc1b4", bgColor: "#ccc1b4", fontSize: 56 },
-  2: { color: "#776e65", bgColor: "#eee4da", fontSize: 56 },
-  4: { color: "#776e65", bgColor: "#ede0c8", fontSize: 56 },
-  8: { color: "#f9f6f2", bgColor: "#f2b179", fontSize: 56 },
-  16: { color: "#f9f6f2", bgColor: "#f59563", fontSize: 56 },
-  32: { color: "#f9f6f2", bgColor: "#f67c5f", fontSize: 56 },
-  64: { color: "#f9f6f2", bgColor: "#f65e3b", fontSize: 56 },
-  128: { color: "#f9f6f2", bgColor: "#edcf72", fontSize: 48 },
-  256: { color: "#f9f6f2", bgColor: "#edcc61", fontSize: 48 },
-  512: { color: "#f9f6f2", bgColor: "#edc850", fontSize: 48 },
-  1024: { color: "#f9f6f2", bgColor: "#edc53f", fontSize: 40 },
-  2048: { color: "#f9f6f2", bgColor: "#edc22e", fontSize: 40 },
+  0: { color: '#ccc1b4', bgColor: '#ccc1b4', fontSize: 56 },
+  2: { color: '#776e65', bgColor: '#eee4da', fontSize: 56 },
+  4: { color: '#776e65', bgColor: '#ede0c8', fontSize: 56 },
+  8: { color: '#f9f6f2', bgColor: '#f2b179', fontSize: 56 },
+  16: { color: '#f9f6f2', bgColor: '#f59563', fontSize: 56 },
+  32: { color: '#f9f6f2', bgColor: '#f67c5f', fontSize: 56 },
+  64: { color: '#f9f6f2', bgColor: '#f65e3b', fontSize: 56 },
+  128: { color: '#f9f6f2', bgColor: '#edcf72', fontSize: 48 },
+  256: { color: '#f9f6f2', bgColor: '#edcc61', fontSize: 48 },
+  512: { color: '#f9f6f2', bgColor: '#edc850', fontSize: 48 },
+  1024: { color: '#f9f6f2', bgColor: '#edc53f', fontSize: 40 },
+  2048: { color: '#f9f6f2', bgColor: '#edc22e', fontSize: 40 },
 };
 
-function getInitialBoard(): Board {
+function getInitialBoard(midGame: boolean): Board {
   const initialBoard = [] as number[][];
 
-  for (let i = 0; i < POSITION_NUMBER; i++) {
-    initialBoard.push([]);
-    for (let j = 0; j < POSITION_NUMBER; j++) {
-      const randomPowerOf2 = 2 ** Math.floor(Math.random() * 12);
-      initialBoard[i].push(randomPowerOf2 === 1 ? 0 : randomPowerOf2);
+  if (midGame) {
+    for (let i = 0; i < POSITION_NUMBER; i++) {
+      initialBoard.push([]);
+      for (let j = 0; j < POSITION_NUMBER; j++) {
+        const randomPowerOf2 = 2 ** Math.floor(Math.random() * 12);
+        initialBoard[i].push(randomPowerOf2 === 1 ? 0 : randomPowerOf2);
+      }
     }
+  } else {
+    for (let i = 0; i < POSITION_NUMBER; i++) {
+      initialBoard.push([]);
+      for (let j = 0; j < POSITION_NUMBER; j++) {
+        initialBoard[i].push(0);
+      }
+    }
+
+    const randomPosition1 = {
+      row: Math.floor(Math.random() * POSITION_NUMBER),
+      col: Math.floor(Math.random() * POSITION_NUMBER),
+    };
+
+    const randomPosition2 = {
+      row: Math.floor(Math.random() * POSITION_NUMBER),
+      col: Math.floor(Math.random() * POSITION_NUMBER),
+    };
+
+    const firstPiece = Math.random() < 0.5 ? 2 : 4;
+    const secondPiece = Math.random() < 0.5 ? 2 : 4;
+
+    initialBoard[randomPosition1.row][randomPosition1.col] = firstPiece;
+    initialBoard[randomPosition2.row][randomPosition2.col] = secondPiece;
   }
 
   return initialBoard;
@@ -108,25 +133,28 @@ export default function Home() {
   }
 
   function drawBackground(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = "#bcac9f";
+    ctx.fillStyle = '#bcac9f';
     ctx.fillRect(0, 0, BOARD_DIMENSIONS, BOARD_DIMENSIONS);
   }
 
-  function drawBoard(ctx: CanvasRenderingContext2D, board: Board) {
-    drawBackground(ctx);
+  const drawBoard = useCallback(
+    (ctx: CanvasRenderingContext2D, board: Board) => {
+      drawBackground(ctx);
 
-    board.forEach((row, i) =>
-      row.forEach((col, j) => drawPiece(ctx, i, j, col))
-    );
-  }
+      board.forEach((row, i) =>
+        row.forEach((col, j) => drawPiece(ctx, i, j, col))
+      );
+    },
+    []
+  );
 
-  function init() {
-    const ctx = canvas.current?.getContext("2d");
+  function init(midGame: boolean = false) {
+    const ctx = canvas.current?.getContext('2d');
     if (!ctx) {
       return;
     }
 
-    const initialBoard = getInitialBoard();
+    const initialBoard = getInitialBoard(midGame);
     drawBoard(ctx, initialBoard);
     setBoard(initialBoard);
   }
@@ -134,7 +162,7 @@ export default function Home() {
   function computeNextBoard(board: Board, move: MoveDirection) {
     const newBoard = board.map((row) => [...row]);
 
-    if (move === "left") {
+    if (move === 'left') {
       // if left, start checking collisions from left to right, top to bottom
       // if collision, check if it's the same number, if so, merge
       // if not, move to the next position
@@ -167,7 +195,7 @@ export default function Home() {
       }
     }
 
-    if (move === "right") {
+    if (move === 'right') {
       // if right, start checking collisions from right to left, top to bottom
       // if collision, check if it's the same number, if so, merge
       // if not, move to the next position
@@ -200,7 +228,7 @@ export default function Home() {
       }
     }
 
-    if (move === "up") {
+    if (move === 'up') {
       // if up, start checking collisions from top to bottom, left to right
       // if collision, check if it's the same number, if so, merge
       // if not, move to the next position
@@ -233,7 +261,7 @@ export default function Home() {
       }
     }
 
-    if (move === "down") {
+    if (move === 'down') {
       // if down, start checking collisions from bottom to top, left to right
       // if collision, check if it's the same number, if so, merge
       // if not, move to the next position
@@ -272,60 +300,90 @@ export default function Home() {
     return newBoard;
   }
 
+  function getMove(key: string): MoveDirection | null {
+    switch (key) {
+      case 'ArrowUp':
+      case 'w':
+        return 'up';
+
+      case 'ArrowDown':
+      case 's':
+        return 'down';
+
+      case 'ArrowLeft':
+      case 'a':
+        return 'left';
+
+      case 'ArrowRight':
+      case 'd':
+        return 'right';
+
+      default:
+        return null;
+    }
+  }
+
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "ArrowUp" || event.key === "w") {
-        console.log("up");
-        const newBoard = computeNextBoard(board, "up");
-        setBoard(newBoard);
-        const ctx = canvas.current?.getContext("2d");
-        ctx && drawBoard(ctx, newBoard);
+      const move = getMove(event.key);
+
+      if (!move) {
         return;
       }
 
-      if (event.key === "ArrowDown" || event.key === "s") {
-        console.log("down");
-        const newBoard = computeNextBoard(board, "down");
-        setBoard(newBoard);
-        const ctx = canvas.current?.getContext("2d");
-        ctx && drawBoard(ctx, newBoard);
+      event.preventDefault();
+      const newBoard = computeNextBoard(board, move);
+
+      const isBoardDirty = newBoard.some((row, i) =>
+        row.some((col, j) => col !== board[i][j])
+      );
+
+      if (!isBoardDirty) {
         return;
       }
 
-      if (event.key === "ArrowLeft" || event.key === "a") {
-        console.log("left");
-        const newBoard = computeNextBoard(board, "left");
-        setBoard(newBoard);
-        const ctx = canvas.current?.getContext("2d");
-        ctx && drawBoard(ctx, newBoard);
-        return;
-      }
+      const emptyPositions = [] as { row: number; col: number }[];
 
-      if (event.key === "ArrowRight" || event.key === "d") {
-        console.log("right");
-        const newBoard = computeNextBoard(board, "right");
-        setBoard(newBoard);
-        const ctx = canvas.current?.getContext("2d");
-        ctx && drawBoard(ctx, newBoard);
-        return;
-      }
+      newBoard.forEach((row, i) =>
+        row.forEach((col, j) => {
+          if (col === 0) {
+            emptyPositions.push({ row: i, col: j });
+          }
+        })
+      );
+
+      const randomPosition =
+        emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+
+      const BIGGER_PIECE_CHANGE = 0.25;
+      const newPiece = Math.random() < 1 - BIGGER_PIECE_CHANGE ? 2 : 4;
+      newBoard[randomPosition.row][randomPosition.col] = newPiece;
+      setBoard(newBoard);
+      const ctx = canvas.current?.getContext('2d');
+      ctx && drawBoard(ctx, newBoard);
     },
     [board, drawBoard]
   );
 
   useEffect(() => {
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [onKeyDown]);
 
   return (
     <main className="h-screen w-screen bg-[#faf8ef] flex flex-col gap-4 items-center justify-center">
-      <button className="bg-[#bcac9f] px-3 py-1" onClick={init}>
-        Init
-      </button>
+      <div className="flex gap-2 items-center">
+        <button className="bg-[#bcac9f] px-3 py-1" onClick={() => init()}>
+          New game
+        </button>
+
+        <button className="bg-[#bcac9f] px-3 py-1" onClick={() => init(true)}>
+          Mid-game
+        </button>
+      </div>
       <canvas
         ref={canvas}
         className="rounded-xl"
@@ -335,4 +393,3 @@ export default function Home() {
     </main>
   );
 }
-
